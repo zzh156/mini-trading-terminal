@@ -241,12 +241,23 @@ export default function TokenPage() {
             <CardContent className="space-y-2">
               {pairs ? (
                 <div className="space-y-2">
-                  {pairs.map((pair) => (
-                    <p className="text-sm" key={pair.pair?.id ?? Math.random().toString(36).substring(2, 15)}>
-                      <strong className="text-muted-foreground">{pair.exchange?.name || 'Unknown Exchange'}: </strong>
-                      <span className="font-mono block break-all" title={pair.pair?.address || ''}>{pair.pair?.address || ''}</span>
-                    </p>
-                  ))}
+                  {pairs
+                    .sort((a, b) => {
+                      const volumeA = parseFloat(a.volumeUSD24 || '0');
+                      const volumeB = parseFloat(b.volumeUSD24 || '0');
+                      return volumeB - volumeA; // Sort by volume descending
+                    })
+                    .map((pair) => (
+                      <div className="text-sm" key={pair.pair?.id ?? Math.random().toString(36).substring(2, 15)}>
+                        <div className="flex justify-between items-start">
+                          <strong className="text-muted-foreground">{pair.exchange?.name || 'Unknown Exchange'}</strong>
+                          <span className="text-xs text-muted-foreground">
+                            24h Volume: ${parseFloat(pair.volumeUSD24 || '0').toLocaleString()}
+                          </span>
+                        </div>
+                        <span className="font-mono block break-all" title={pair.pair?.address || ''}>{pair.pair?.address || ''}</span>
+                      </div>
+                    ))}
                 </div>
               ) : (
                 <p className="text-muted-foreground">Token details could not be loaded.</p>
