@@ -1,13 +1,16 @@
 import { Codex } from "@codex-data/sdk";
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useState, Suspense } from "react";
+import { Zap } from "lucide-react";
 import { TokenChart, ChartDataPoint } from "@/components/TokenChart";
 import { TradingPanel } from "@/components/TradingPanel";
+import { TradingPopup } from "@/components/TradingPopup";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EnhancedToken, PairFilterResult, PairRankingAttribute, RankingDirection } from "@codex-data/sdk/dist/sdk/generated/graphql";
 import { RAYDIUM_CPMM_PROGRAM_ID } from "@/lib/raydium-cpmm";
 import { NATIVE_MINT } from "@solana/spl-token";
+import { useTradingStore } from "@/stores/use-trading-store";
 
 // Wrapped SOL Mint address (used by all DEX pools)
 const WSOL_MINT = NATIVE_MINT.toBase58();
@@ -31,6 +34,22 @@ export default function TokenPage() {
   const [events, setEvents] = useState<TokenEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+
+  // Strictly Look for explicit Raydium CPMM (matching by Program ID) + wSOL pair
+  const raydiumCpmmPair = pairs.find(p =>
+    p.exchange?.address === RAYDIUM_CPMM_PROGRAM_ID &&
+    (p.pair?.token0 === WSOL_MINT || p.pair?.token1 === WSOL_MINT)
+  );
+  const raydiumPoolAddress = raydiumCpmmPair?.pair?.address;
+
+  // Initialize Store
+  const initializeStore = useTradingStore(state => state.initialize);
+  useEffect(() => {
+    if (details) {
+      initializeStore(details, raydiumPoolAddress);
+    }
+  }, [details, raydiumPoolAddress, initializeStore]);
 
   useEffect(() => {
     if (isNaN(networkIdNum) || !tokenId) {
@@ -142,13 +161,6 @@ export default function TokenPage() {
   const tokenSymbol = details?.symbol ? `(${details.symbol})` : '';
 
 
-  // Strictly Look for explicit Raydium CPMM (matching by Program ID) + wSOL pair
-  const raydiumCpmmPair = pairs.find(p =>
-    p.exchange?.address === RAYDIUM_CPMM_PROGRAM_ID &&
-    (p.pair?.token0 === WSOL_MINT || p.pair?.token1 === WSOL_MINT)
-  );
-  const raydiumPoolAddress = raydiumCpmmPair?.pair?.address;
-
   return (
     <main className="flex min-h-screen flex-col items-center p-6 md:p-12 space-y-6">
       <div className="w-full max-w-6xl flex justify-between items-center">
@@ -166,7 +178,17 @@ export default function TokenPage() {
             <TokenChart data={bars} title={`${tokenSymbol || 'Token'} Price Chart`} />
           </Suspense>
 
-          <Card>
+          <div className="flex justify-end -mt-2">
+            <button
+              onClick={() => setIsPopupOpen(prev => !prev)}
+              className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 px-6 py-2 rounded-full flex items-center gap-2 border border-blue-500/50 shadow-sm transition-all active:scale-95 text-sm font-bold cursor-pointer group/btn"
+            >
+              <Zap className="w-3.5 h-3.5 fill-blue-500 text-blue-500 group-hover/btn:animate-pulse" />
+              Instant Trade
+            </button>
+          </div>
+
+          <Card className="-mt-2">
             <CardHeader>
               <CardTitle>Recent Transactions</CardTitle>
             </CardHeader>
@@ -201,7 +223,7 @@ export default function TokenPage() {
           </Card>
         </div>
 
-        <div className="lg:col-span-1 space-y-6">
+        <div id="trading-panel" className="lg:col-span-1 space-y-6">
           {details && (
             <TradingPanel
               token={details}
@@ -283,6 +305,13 @@ export default function TokenPage() {
           </Card>
         </div>
       </div>
+      <TradingPopup
+        isOpen={isPopupOpen}
+        onClose={() => setIsPopupOpen(false)}
+        title={`Instant Trade`}
+        token={details}
+        raydiumPoolAddress={raydiumPoolAddress}
+      />
     </main>
   );
 }

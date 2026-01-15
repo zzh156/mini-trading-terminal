@@ -1,3 +1,16 @@
+# Create a new floating instant trade panel on the Token Page
+
+![alt text](docs/trading-popup.png)
+
+## Description
+- Added a new Trading Popup component that is draggable and resizable. Use `react-rnd`
+- Integrated `zustand` for state management, enabling shared state between the Trading Popup and the Trading Panel.
+- Optimized UX details.
+
+---
+
+# Trading
+
 ## Description
 - Implemented features based on the requirements in `docs/requirements.md`.
 ![alt text](docs/image.png)
