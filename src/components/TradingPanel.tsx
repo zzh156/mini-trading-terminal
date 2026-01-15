@@ -9,17 +9,18 @@ import { useTrade } from "@/hooks/use-trade";
 import { confirmTransaction, createConnection, createKeypair, sendTransaction, signTransaction } from "@/lib/solana";
 
 interface TradingPanelProps {
-  token: EnhancedToken
+  token: EnhancedToken;
+  raydiumPoolAddress?: string;
 }
 
-export function TradingPanel({ token }: TradingPanelProps) {
+export function TradingPanel({ token, raydiumPoolAddress }: TradingPanelProps) {
   const tokenSymbol = token.symbol;
   const [tradeMode, setTradeMode] = useState<"buy" | "sell">("buy");
   const [buyAmount, setBuyAmount] = useState("");
   const [sellPercentage, setSellPercentage] = useState("");
-  
+
   const { nativeBalance: solanaBalance, tokenBalance, tokenAtomicBalance, loading, refreshBalance } = useBalance(token.address, Number(token.decimals), 9, Number(token.networkId));
-  const { createTransaction } = useTrade(token.address, tokenAtomicBalance);
+  const { createTransaction } = useTrade(token.address, tokenAtomicBalance, raydiumPoolAddress);
 
   const keypair = createKeypair(import.meta.env.VITE_SOLANA_PRIVATE_KEY);
   const connection = createConnection();
@@ -28,10 +29,10 @@ export function TradingPanel({ token }: TradingPanelProps) {
     const toastId = toast.loading("Submitting trade request...");
     try {
       const transaction =
-        await createTransaction({ 
-          direction: tradeMode, 
-          value: tradeMode === "buy" ? parseFloat(buyAmount) : parseFloat(sellPercentage), 
-          signer: keypair.publicKey 
+        await createTransaction({
+          direction: tradeMode,
+          value: tradeMode === "buy" ? parseFloat(buyAmount) : parseFloat(sellPercentage),
+          signer: keypair.publicKey
         });
 
       toast.loading("Signing transaction...", { id: toastId });
@@ -46,7 +47,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
       if (confirmation.value.err) {
         throw new Error("Trade failed");
       }
-      toast.success(`Trade successful! TX: ${signature.slice(0, 8)}...`, { id: toastId }); 
+      toast.success(`Trade successful! TX: ${signature.slice(0, 8)}...`, { id: toastId });
 
       // Refresh balance after 1 second
       setTimeout(refreshBalance, 1000);
@@ -201,7 +202,7 @@ export function TradingPanel({ token }: TradingPanelProps) {
             (tradeMode === "sell" && (!sellPercentage || parseFloat(sellPercentage) <= 0))
           }
           className={cn(
-            "w-full py-3 px-4 rounded-lg font-semibold transition-all",
+            "w-full py-3 px-4 rounded-lg font-semibold transition-all mb-4",
             tradeMode === "buy"
               ? "bg-green-500 hover:bg-green-600 text-white disabled:bg-green-500/30 disabled:text-green-500/50"
               : "bg-red-500 hover:bg-red-600 text-white disabled:bg-red-500/30 disabled:text-red-500/50",
@@ -210,6 +211,38 @@ export function TradingPanel({ token }: TradingPanelProps) {
         >
           {tradeMode === "buy" ? "Buy" : "Sell"} {tokenSymbol || "Token"}
         </button>
+
+        <div className="pt-4 border-t border-border">
+          {raydiumPoolAddress ? (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <p className="text-xs font-medium text-foreground/80">Strategy: Raydium CPMM</p>
+              </div>
+              <div className="bg-muted/50 rounded p-2 overflow-hidden">
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight mb-1 opacity-70">Direct Pool Address</p>
+                <a
+                  href={`https://solscan.io/account/${raydiumPoolAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-mono break-all text-muted-foreground/90 leading-normal hover:text-primary transition-colors hover:underline inline-block"
+                >
+                  {raydiumPoolAddress}
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1.5 opacity-80">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                <p className="text-xs font-medium text-foreground/80">Strategy: Jupiter Routing</p>
+              </div>
+              <p className="text-[10px] text-muted-foreground leading-snug pl-3.5">
+                No active Raydium CPMM SOL-pair detected. Falling back to Jupiter aggregator for optimal execution.
+              </p>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

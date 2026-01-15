@@ -134,12 +134,12 @@ export default function NetworkPage() {
                         </Link>
                       </td>
                       <td className="p-2 truncate">
-                         <Link to={`/networks/${networkId}/tokens/${item.token?.address}`} className="block w-full h-full">
-                           {item.token?.symbol || "-"}
-                         </Link>  
-                      </td>
-                      <td className="p-2 truncate">
                         <Link to={`/networks/${networkId}/tokens/${item.token?.address}`} className="block w-full h-full">
+                          {item.token?.symbol || "-"}
+                        </Link>
+                      </td>
+                      <td className="p-2 text-sm leading-tight">
+                        <Link to={`/networks/${networkId}/tokens/${item.token?.address}`} className="hover:underline">
                           {item.token?.exchanges?.map((exchange) => exchange.name).join(", ") || "-"}
                         </Link>
                       </td>

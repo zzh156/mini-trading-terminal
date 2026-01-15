@@ -6,6 +6,11 @@ import { TradingPanel } from "@/components/TradingPanel";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EnhancedToken, PairFilterResult, PairRankingAttribute, RankingDirection } from "@codex-data/sdk/dist/sdk/generated/graphql";
+import { RAYDIUM_CPMM_PROGRAM_ID } from "@/lib/raydium-cpmm";
+import { NATIVE_MINT } from "@solana/spl-token";
+
+// Wrapped SOL Mint address (used by all DEX pools)
+const WSOL_MINT = NATIVE_MINT.toBase58();
 
 type TokenEvent = {
   id: string;
@@ -136,6 +141,14 @@ export default function TokenPage() {
   const tokenName = details?.name || tokenId;
   const tokenSymbol = details?.symbol ? `(${details.symbol})` : '';
 
+
+  // Strictly Look for explicit Raydium CPMM (matching by Program ID) + wSOL pair
+  const raydiumCpmmPair = pairs.find(p =>
+    p.exchange?.address === RAYDIUM_CPMM_PROGRAM_ID &&
+    (p.pair?.token0 === WSOL_MINT || p.pair?.token1 === WSOL_MINT)
+  );
+  const raydiumPoolAddress = raydiumCpmmPair?.pair?.address;
+
   return (
     <main className="flex min-h-screen flex-col items-center p-6 md:p-12 space-y-6">
       <div className="w-full max-w-6xl flex justify-between items-center">
@@ -192,6 +205,7 @@ export default function TokenPage() {
           {details && (
             <TradingPanel
               token={details}
+              raydiumPoolAddress={raydiumPoolAddress}
             />
           )}
 
@@ -244,8 +258,16 @@ export default function TokenPage() {
                   {pairs
                     .map((pair) => (
                       <div className="text-sm" key={pair.pair?.id ?? Math.random().toString(36).substring(2, 15)}>
-                        <div className="flex justify-between items-start">
-                          <strong className="text-muted-foreground">{pair.exchange?.name || 'Unknown Exchange'}</strong>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <strong className="text-muted-foreground">{pair.exchange?.name || 'Unknown Exchange'}</strong>
+
+                            <span className="ml-2 font-medium text-xs text-muted-foreground">
+                              {pair.token0?.symbol && pair.token1?.symbol
+                                ? `${pair.token0.symbol}/${pair.token1.symbol}`
+                                : (pair.pair?.token0?.substring(0, 4) + '...' + ' / ' + pair.pair?.token1?.substring(0, 4) + '...')}
+                            </span>
+                          </div>
                           <span className="text-xs text-muted-foreground">
                             24h Volume: ${parseFloat(pair.volumeUSD24 || '0').toLocaleString()}
                           </span>

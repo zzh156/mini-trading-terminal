@@ -1,4 +1,4 @@
-import { Connection, PublicKey, Keypair, VersionedTransaction } from "@solana/web3.js";
+import { Connection, PublicKey, Keypair, VersionedTransaction, SendTransactionError } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import Decimal from "decimal.js";
 import bs58 from "bs58";
@@ -57,8 +57,15 @@ export const signTransaction = (keypair: Keypair, transaction: VersionedTransact
 };
 
 export const sendTransaction = async (transaction: VersionedTransaction, connection: Connection) => {
-  const signature = await connection.sendTransaction(transaction);
-  return signature;
+  try {
+    const signature = await connection.sendTransaction(transaction);
+    return signature;
+  } catch (error) {
+    if (error instanceof SendTransactionError) {
+      console.error("Transaction Simulation Failed Logs:", await error.getLogs(connection));
+    }
+    throw error;
+  }
 };
 
 export const confirmTransaction = async (signature: string, connection: Connection) => {
